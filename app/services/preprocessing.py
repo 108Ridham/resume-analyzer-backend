@@ -2,10 +2,10 @@ import re
 
 def basic_cleaning(text: str) -> str:
     text = text.lower()
-    text = text.replace("c++", "cplusplus")          # ✅ protect before cleaning
-    text = text.replace("node.js", "node js")        # ✅ normalize
+    text = text.replace("c++", "cplusplus")          
+    text = text.replace("node.js", "node js")        
     text = re.sub(r'[^a-z0-9\s]', ' ', text)
-    text = text.replace("cplusplus", "c++")          # ✅ restore after cleaning
+    text = text.replace("cplusplus", "c++")          
     return text
 
 def normalise_text(text: str) -> str:

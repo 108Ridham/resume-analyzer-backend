@@ -1,6 +1,11 @@
 import os
 import requests
 import time
+import socket
+import urllib3.util.connection
+
+# Force urllib3 (used by requests) to use IPv4 only, avoiding buggy IPv6 DNS resolutions on Render
+urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
 
 def get_embedding(text: str):
     # Use Hugging Face Inference API to keep memory under 512MB on Render.

@@ -8,33 +8,47 @@ def get_embedding(text: str):
     
     # Optional HF_TOKEN from environment variables to avoid rate limits
     token = os.getenv("HF_TOKEN")
-    headers = {}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
+    }
     if token:
         headers["Authorization"] = f"Bearer {token}"
         
-    try:
-        response = requests.post(API_URL, headers=headers, json={"inputs": text}, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            # Check if model is loading on HF, if so, wait and retry once
-            result = response.json()
-            if isinstance(result, dict) and "estimated_time" in result:
-                wait_time = min(result["estimated_time"], 5)
-                time.sleep(wait_time)
-                response = requests.post(API_URL, headers=headers, json={"inputs": text}, timeout=10)
-                if response.status_code == 200:
-                    return response.json()
-            raise Exception(f"HF API returned status {response.status_code}: {response.text}")
-    except Exception as e:
-        print(f"HF Inference API failed ({e}). Falling back to local SentenceTransformer...")
+    last_exception = None
+    retries = 3
+    for attempt in range(retries):
         try:
-            from sentence_transformers import SentenceTransformer
-            global _local_model
-            if '_local_model' not in globals():
-                _local_model = SentenceTransformer('all-MiniLM-L6-v2')
-            # Convert numpy array output of SentenceTransformer to list
-            return _local_model.encode(text).tolist()
-        except ImportError:
-            # If not installed (like on Render), propagate the original API error
-            raise Exception(f"HF Inference API failed and local fallback is not installed: {e}")
+            response = requests.post(API_URL, headers=headers, json={"inputs": text}, timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 503:
+                # Model might be loading on HF, check if estimated time is returned
+                try:
+                    result = response.json()
+                    if isinstance(result, dict) and "estimated_time" in result:
+                        wait_time = min(result["estimated_time"], 5)
+                        time.sleep(wait_time)
+                        continue
+                except Exception:
+                    pass
+            
+            # If not successful and not loading, raise exception to retry
+            raise Exception(f"HF API returned status {response.status_code}: {response.text}")
+            
+        except Exception as e:
+            last_exception = e
+            # Wait with exponential backoff (e.g. 1s, 2s, 4s)
+            time.sleep(2 ** attempt)
+            
+    # If all retries failed, fall back to local SentenceTransformer if possible
+    print(f"HF Inference API failed after {retries} attempts ({last_exception}). Falling back to local SentenceTransformer...")
+    try:
+        from sentence_transformers import SentenceTransformer
+        global _local_model
+        if '_local_model' not in globals():
+            _local_model = SentenceTransformer('all-MiniLM-L6-v2')
+        # Convert numpy array output of SentenceTransformer to list
+        return _local_model.encode(text).tolist()
+    except ImportError:
+        # If not installed (like on Render), propagate the original API error
+        raise Exception(f"HF Inference API failed and local fallback is not installed. Last Error: {last_exception}")

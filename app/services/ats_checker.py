@@ -55,28 +55,7 @@ TECHNICAL_AND_LEADERSHIP_KEYWORDS = {
 }
 
 
-# ─── Curated power action verbs ───────────────────────────────────────────────
-ACTION_VERBS = [
-    # Leadership
-    "led", "managed", "directed", "supervised", "oversaw", "coordinated",
-    "spearheaded", "orchestrated", "headed", "guided", "mentored", "coached",
-    # Development / building
-    "built", "developed", "designed", "architected", "engineered", "created",
-    "implemented", "deployed", "launched", "established", "founded", "initiated",
-    # Improvement
-    "improved", "optimized", "enhanced", "streamlined", "accelerated", "upgraded",
-    "refactored", "automated", "reduced", "eliminated", "resolved", "fixed",
-    # Analysis / research
-    "analyzed", "researched", "investigated", "evaluated", "assessed", "audited",
-    "identified", "diagnosed", "measured", "tracked", "monitored", "reviewed",
-    # Collaboration
-    "collaborated", "partnered", "liaised", "facilitated", "supported", "assisted",
-    # Achievement
-    "achieved", "delivered", "exceeded", "surpassed", "generated", "increased",
-    "grew", "scaled", "expanded", "boosted", "saved", "secured", "won",
-    # Communication
-    "presented", "communicated", "documented", "authored", "wrote", "trained",
-]
+
 
 
 # ─── Missing keywords (JD vs Resume) ────────────────────────────────────────
@@ -107,30 +86,7 @@ def find_missing_keywords(resume_text: str, jd_text: str, top_n: int = 15) -> li
     return missing[:top_n]
 
 
-# ─── Action verb detection ────────────────────────────────────────────────────
-def detect_action_verbs(raw_text: str) -> dict:
-    """Find which action verbs from our list appear in the resume."""
-    text_lower = raw_text.lower()
-    found = []
-    missing = []
 
-    for verb in ACTION_VERBS:
-        pattern = r'\b' + re.escape(verb) + r'\b'
-        if re.search(pattern, text_lower):
-            found.append(verb)
-        else:
-            missing.append(verb)
-
-    count = len(found)
-    # Score: 0–10 verbs → scale to 100
-    score = min(round((count / 10) * 100), 100)
-
-    return {
-        "found": found,
-        "found_count": count,
-        "total_checked": len(ACTION_VERBS),
-        "score": score,          # 0–100
-    }
 
 
 # ─── Resume length check ──────────────────────────────────────────────────────
@@ -262,15 +218,13 @@ def formatting_check(raw_text: str, pdf_links: list = None) -> dict:
 def compute_ats_score(
     missing_kw_count: int,
     total_jd_kw: int,
-    action_verb_score: int,
     formatting_score: int,
     length_score: int,
 ) -> int:
     """
     Weighted composite ATS score (0–100):
-      - Keyword coverage   30%  (jd keywords present in resume)
-      - Action verbs       25%
-      - Formatting         25%
+      - Keyword coverage   50%  (jd keywords present in resume)
+      - Formatting         30%
       - Length             20%
     """
     if total_jd_kw > 0:
@@ -280,9 +234,8 @@ def compute_ats_score(
         keyword_score = 100
 
     score = (
-        keyword_score     * 0.30 +
-        action_verb_score * 0.25 +
-        formatting_score  * 0.25 +
+        keyword_score     * 0.50 +
+        formatting_score  * 0.30 +
         length_score      * 0.20
     )
     return round(score)
@@ -293,7 +246,6 @@ def run_ats_analysis(raw_text: str, word_count: int, jd_text: str = "", pdf_link
     """Run all ATS checks and return a combined result dict."""
 
     missing_kw  = find_missing_keywords(raw_text, jd_text)
-    av          = detect_action_verbs(raw_text)
     rl          = check_resume_length(word_count)
     fc          = formatting_check(raw_text, pdf_links)
 
@@ -306,7 +258,6 @@ def run_ats_analysis(raw_text: str, word_count: int, jd_text: str = "", pdf_link
     ats_score = compute_ats_score(
         missing_kw_count=len(missing_kw),
         total_jd_kw=total_jd_kw,
-        action_verb_score=av["score"],
         formatting_score=fc["score"],
         length_score=rl["score"],
     )
@@ -314,7 +265,6 @@ def run_ats_analysis(raw_text: str, word_count: int, jd_text: str = "", pdf_link
     return {
         "ats_score": ats_score,
         "missing_keywords": missing_kw,
-        "action_verbs": av,
         "resume_length": rl,
         "formatting": fc,
     }

@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
 def generate_llm_suggestions(
     matching_skills: list,
     missing_skills: list,
@@ -13,6 +11,14 @@ def generate_llm_suggestions(
     resume_sections: dict,
     job_description: str
 ) -> dict:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return {
+            "status": "error",
+            "advice": "LLM suggestions unavailable: GROQ_API_KEY environment variable is not set."
+        }
+    
+    client = Groq(api_key=api_key)
 
     prompt = f"""
 You are an expert career advisor and resume coach.

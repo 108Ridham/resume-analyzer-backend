@@ -21,7 +21,7 @@ SKILL_ALIASES = {
 
 def extract_skills(text: str, skills_set: list):
     found = set()
-    for skill in skills_set:                          # ✅ use parameter, not SKILLS
+    for skill in skills_set:                          
         aliases = SKILL_ALIASES.get(skill, [skill])
         for alias in aliases:
             if re.search(r'\b' + re.escape(alias) + r'\b', text):
@@ -36,7 +36,7 @@ def skill_gap_analysis(resume_skills, jd_skills):
     missing_skills = jd_set.difference(resume_set)
     return list(matching_skills), list(missing_skills)
 
-def check_resume_sections(text: str) -> dict:        # ✅ new addition
+def check_resume_sections(text: str) -> dict:        
     sections = {
         "experience": ["experience", "work history", "employment"],
         "education": ["education", "academic", "degree"],
